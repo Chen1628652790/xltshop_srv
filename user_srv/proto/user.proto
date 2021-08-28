@@ -56,7 +56,7 @@ message MobileRequest {
 
 message UserInfoResponse {
   int32 id = 1;
-  string password = 2;
+  string passWord = 2;
   string mobile = 3;
   string nickName = 4;
   uint64 birthday = 5;
