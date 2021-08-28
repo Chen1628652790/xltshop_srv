@@ -2,7 +2,10 @@ package handler
 
 import (
 	"context"
+	"crypto/sha512"
+	"fmt"
 
+	"github.com/anaskhan96/go-password-encoder"
 	"github.com/xlt/shop_srv/user_srv/global"
 	"github.com/xlt/shop_srv/user_srv/model"
 	"github.com/xlt/shop_srv/user_srv/proto"
@@ -40,7 +43,7 @@ func (h *UserServer) GetUserList(ctx context.Context, req *proto.PageInfo) (*pro
 func (h *UserServer) GetUserByMobile(ctx context.Context, req *proto.MobileRequest) (*proto.UserInfoResponse, error) {
 	var user model.User
 
-	result := global.DB.Where(&model.User{Mobile: req.Mobile}).Limit(1).Find(&user)
+	result := global.DB.Where(&model.User{Mobile: req.Mobile}).First(&user)
 	if result.RowsAffected == 0 {
 		return nil, status.Errorf(codes.NotFound, "用户不存在")
 	}
@@ -57,7 +60,7 @@ func (h *UserServer) GetUserById(ctx context.Context, req *proto.IdRequest) (*pr
 
 	result := global.DB.Where(&model.User{
 		BaseModel: model.BaseModel{ID: req.Id},
-	}).Limit(1).Find(&user)
+	}).First(&user)
 	if result.RowsAffected == 0 {
 		return nil, status.Errorf(codes.NotFound, "用户不存在")
 	}
@@ -67,6 +70,36 @@ func (h *UserServer) GetUserById(ctx context.Context, req *proto.IdRequest) (*pr
 
 	userInfoRsp := ModelToResponse(user)
 	return userInfoRsp, nil
+}
+
+func (h *UserServer) CreateUser(ctx context.Context, req *proto.CreateUserInfo) (*proto.UserInfoResponse, error) {
+	var user model.User
+
+	result := global.DB.Where(&model.User{Mobile: req.Mobile}).First(&user)
+	if result.RowsAffected == 1 {
+		return nil, status.Errorf(codes.AlreadyExists, result.Error.Error())
+	}
+
+	user.NickName = req.NickName
+	user.Mobile = req.Mobile
+
+	options := &password.Options{
+		SaltLen:      16,
+		Iterations:   100,
+		KeyLen:       32,
+		HashFunction: sha512.New,
+	}
+	salt, encodePwd := password.Encode(req.PassWord, options)
+	user.Password = fmt.Sprintf("$pbkdf2-sha512$%s$%s", salt, encodePwd)
+
+	result = global.DB.Create(&user)
+	if result.Error != nil {
+		return nil, status.Errorf(codes.Internal, result.Error.Error())
+	}
+
+	user.Password = ""
+	userInfoResponse := ModelToResponse(user)
+	return userInfoResponse, nil
 }
 
 func ModelToResponse(user model.User) *proto.UserInfoResponse {

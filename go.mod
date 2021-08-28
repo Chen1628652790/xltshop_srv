@@ -3,6 +3,7 @@ module github.com/xlt/shop_srv
 go 1.16
 
 require (
+	github.com/anaskhan96/go-password-encoder v0.0.0-20201010210601-c765b799fd72 // indirect
 	github.com/golang/protobuf v1.5.2
 	google.golang.org/grpc v1.40.0
 	google.golang.org/protobuf v1.26.0
