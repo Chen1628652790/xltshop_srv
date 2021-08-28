@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/xlt/shop_srv/user_srv/model"
 	"log"
 	"os"
 	"time"
 
-	"github.com/xlt/shop_srv/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
