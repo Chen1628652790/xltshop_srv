@@ -6,6 +6,8 @@ import (
 	"github.com/xlt/shop_srv/user_srv/global"
 	"github.com/xlt/shop_srv/user_srv/model"
 	"github.com/xlt/shop_srv/user_srv/proto"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
 )
 
@@ -33,6 +35,38 @@ func (h *UserServer) GetUserList(ctx context.Context, req *proto.PageInfo) (*pro
 	}
 
 	return rsp, nil
+}
+
+func (h *UserServer) GetUserByMobile(ctx context.Context, req *proto.MobileRequest) (*proto.UserInfoResponse, error) {
+	var user model.User
+
+	result := global.DB.Where(&model.User{Mobile: req.Mobile}).Limit(1).Find(&user)
+	if result.RowsAffected == 0 {
+		return nil, status.Errorf(codes.NotFound, "用户不存在")
+	}
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	userInfoRsp := ModelToResponse(user)
+	return userInfoRsp, nil
+}
+
+func (h *UserServer) GetUserById(ctx context.Context, req *proto.IdRequest) (*proto.UserInfoResponse, error) {
+	var user model.User
+
+	result := global.DB.Where(&model.User{
+		BaseModel: model.BaseModel{ID: req.Id},
+	}).Limit(1).Find(&user)
+	if result.RowsAffected == 0 {
+		return nil, status.Errorf(codes.NotFound, "用户不存在")
+	}
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	userInfoRsp := ModelToResponse(user)
+	return userInfoRsp, nil
 }
 
 func ModelToResponse(user model.User) *proto.UserInfoResponse {
