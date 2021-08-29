@@ -105,7 +105,7 @@ func (h *UserServer) CreateUser(ctx context.Context, req *proto.CreateUserInfo) 
 	return userInfoResponse, nil
 }
 
-func UpdateUser(ctx context.Context, req *proto.UpdateUserInfo) (*empty.Empty, error) {
+func (h *UserServer) UpdateUser(ctx context.Context, req *proto.UpdateUserInfo) (*empty.Empty, error) {
 	var user model.User
 
 	result := global.DB.Where(&model.User{
@@ -128,7 +128,7 @@ func UpdateUser(ctx context.Context, req *proto.UpdateUserInfo) (*empty.Empty, e
 	return &empty.Empty{}, nil
 }
 
-func CheckPassWord(ctx context.Context, req *proto.PassWordCheckInfo) (*proto.CheckResponse, error) {
+func (h *UserServer) CheckPassWord(ctx context.Context, req *proto.PassWordCheckInfo) (*proto.CheckResponse, error) {
 	options := &password.Options{
 		SaltLen:      16,
 		Iterations:   100,

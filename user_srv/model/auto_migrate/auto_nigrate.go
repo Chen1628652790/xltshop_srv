@@ -1,7 +1,9 @@
 package main
 
 import (
-	"github.com/xlt/shop_srv/user_srv/model"
+	"crypto/sha512"
+	"fmt"
+	"github.com/anaskhan96/go-password-encoder"
 	"log"
 	"os"
 	"time"
@@ -10,6 +12,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
+
+	"github.com/xlt/shop_srv/user_srv/model"
 )
 
 func main() {
@@ -34,8 +38,26 @@ func main() {
 		log.Fatal("gorm.Open failed. err:", err.Error())
 	}
 
-	err = db.AutoMigrate(&model.User{})
-	if err != nil {
-		log.Fatal("db.AutoMigrate failed. err:", err.Error())
+	options := &password.Options{
+		SaltLen:      16,
+		Iterations:   100,
+		KeyLen:       32,
+		HashFunction: sha512.New,
 	}
+	salt, encodePwd := password.Encode("admin123", options)
+	newPassword := fmt.Sprintf("$pbkdf2-sha512$%s$%s", salt, encodePwd)
+
+	for i := 0; i < 10; i++ {
+		user := model.User{
+			Mobile:   fmt.Sprintf("1510000111%d", i),
+			Password: newPassword,
+			NickName: fmt.Sprintf("xiaolatiao%d", i),
+		}
+		db.Create(&user)
+	}
+
+	//err = db.AutoMigrate(&model.User{})
+	//if err != nil {
+	//	log.Fatal("db.AutoMigrate failed. err:", err.Error())
+	//}
 }
