@@ -7,5 +7,5 @@ import (
 
 var (
 	ServerConfig = &config.ServerConfig{}
-	DB           *gorm.DB
+	MySQLConn    *gorm.DB
 )

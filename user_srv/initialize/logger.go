@@ -2,7 +2,6 @@ package initialize
 
 import (
 	"io"
-	"log"
 	"os"
 	"time"
 
@@ -23,7 +22,7 @@ func InitLogger() {
 		if os.IsNotExist(err) {
 			err := os.Mkdir(output_dir, os.ModePerm)
 			if err != nil {
-				log.Fatal("创建目录失败![%v]\n", err)
+				zap.S().Errorw("os.Mkdir failed", "msg", err.Error())
 			}
 		}
 	}

@@ -25,7 +25,7 @@ func (h *UserServer) GetUserList(ctx context.Context, req *proto.PageInfo) (*pro
 	var users []model.User
 	var count int64
 
-	result := global.DB.Model(&model.User{}).Count(&count)
+	result := global.MySQLConn.Model(&model.User{}).Count(&count)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -34,7 +34,7 @@ func (h *UserServer) GetUserList(ctx context.Context, req *proto.PageInfo) (*pro
 		Total: int32(count),
 	}
 
-	global.DB.Scopes(Paginate(int(req.Pn), int(req.PSize))).Find(&users)
+	global.MySQLConn.Scopes(Paginate(int(req.Pn), int(req.PSize))).Find(&users)
 
 	for _, user := range users {
 		userInfoRsp := ModelToResponse(user)
@@ -47,7 +47,7 @@ func (h *UserServer) GetUserList(ctx context.Context, req *proto.PageInfo) (*pro
 func (h *UserServer) GetUserByMobile(ctx context.Context, req *proto.MobileRequest) (*proto.UserInfoResponse, error) {
 	var user model.User
 
-	result := global.DB.Where(&model.User{Mobile: req.Mobile}).First(&user)
+	result := global.MySQLConn.Where(&model.User{Mobile: req.Mobile}).First(&user)
 	if result.RowsAffected == 0 {
 		return nil, status.Errorf(codes.NotFound, "用户不存在")
 	}
@@ -62,7 +62,7 @@ func (h *UserServer) GetUserByMobile(ctx context.Context, req *proto.MobileReque
 func (h *UserServer) GetUserById(ctx context.Context, req *proto.IdRequest) (*proto.UserInfoResponse, error) {
 	var user model.User
 
-	result := global.DB.Where(&model.User{
+	result := global.MySQLConn.Where(&model.User{
 		BaseModel: model.BaseModel{ID: req.Id},
 	}).First(&user)
 	if result.RowsAffected == 0 {
@@ -79,7 +79,7 @@ func (h *UserServer) GetUserById(ctx context.Context, req *proto.IdRequest) (*pr
 func (h *UserServer) CreateUser(ctx context.Context, req *proto.CreateUserInfo) (*proto.UserInfoResponse, error) {
 	var user model.User
 
-	result := global.DB.Where(&model.User{Mobile: req.Mobile}).First(&user)
+	result := global.MySQLConn.Where(&model.User{Mobile: req.Mobile}).First(&user)
 	if result.RowsAffected == 1 {
 		return nil, status.Errorf(codes.AlreadyExists, result.Error.Error())
 	}
@@ -96,7 +96,7 @@ func (h *UserServer) CreateUser(ctx context.Context, req *proto.CreateUserInfo) 
 	salt, encodePwd := password.Encode(req.PassWord, options)
 	user.Password = fmt.Sprintf("$pbkdf2-sha512$%s$%s", salt, encodePwd)
 
-	result = global.DB.Create(&user)
+	result = global.MySQLConn.Create(&user)
 	if result.Error != nil {
 		return nil, status.Errorf(codes.Internal, result.Error.Error())
 	}
@@ -109,7 +109,7 @@ func (h *UserServer) CreateUser(ctx context.Context, req *proto.CreateUserInfo) 
 func (h *UserServer) UpdateUser(ctx context.Context, req *proto.UpdateUserInfo) (*empty.Empty, error) {
 	var user model.User
 
-	result := global.DB.Where(&model.User{
+	result := global.MySQLConn.Where(&model.User{
 		BaseModel: model.BaseModel{ID: req.Id},
 	}).First(&user)
 	if result.RowsAffected != 1 {
@@ -121,7 +121,7 @@ func (h *UserServer) UpdateUser(ctx context.Context, req *proto.UpdateUserInfo) 
 	user.Birthday = &birthday
 	user.Gender = req.Gender
 
-	result = global.DB.Save(&user)
+	result = global.MySQLConn.Save(&user)
 	if result.Error != nil {
 		return nil, status.Errorf(codes.Internal, result.Error.Error())
 	}

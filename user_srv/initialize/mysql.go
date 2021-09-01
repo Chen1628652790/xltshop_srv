@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -33,13 +34,13 @@ func InitMySQL() {
 	)
 
 	var err error
-	global.DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+	global.MySQLConn, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
 		},
 		Logger: newLogger,
 	})
 	if err != nil {
-		log.Fatal("gorm.Open failed. err:", err.Error())
+		zap.S().Errorw("gorm.Open failed. err:", "msg", err.Error())
 	}
 }

@@ -1,3 +1,4 @@
+server_name: 'user_srv'
 mode: 'debug'
 
 mysql:
