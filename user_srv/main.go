@@ -3,11 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/xlt/shop_srv/user_srv/handler"
-	"github.com/xlt/shop_srv/user_srv/proto"
-	"google.golang.org/grpc"
-	"log"
 	"net"
+
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+
+	"github.com/xlt/shop_srv/user_srv/handler"
+	"github.com/xlt/shop_srv/user_srv/initialize"
+	"github.com/xlt/shop_srv/user_srv/proto"
 )
 
 func main() {
@@ -15,16 +18,21 @@ func main() {
 	Port := flag.Int64("port", 50051, "端口号")
 	flag.Parse()
 
+	initialize.InitLogger()
+	initialize.InitConfig()
+	initialize.InitMySQL()
+
 	server := grpc.NewServer()
 	proto.RegisterUserServer(server, &handler.UserServer{})
 
 	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *IP, *Port))
 	if err != nil {
-		log.Fatal("net.Listen failed, err:", err.Error())
+		zap.S().Errorw("net.Listen failed, err:", "msg", err.Error())
+		return
 	}
 
 	err = server.Serve(listen)
 	if err != nil {
-		log.Fatal("server.Serve failed, err:", err.Error())
+		zap.S().Errorw("server.Serve failed, err:", "msg", err.Error())
 	}
 }

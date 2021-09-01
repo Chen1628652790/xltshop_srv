@@ -9,12 +9,13 @@ import (
 
 	"github.com/anaskhan96/go-password-encoder"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/xlt/shop_srv/user_srv/global"
-	"github.com/xlt/shop_srv/user_srv/model"
-	"github.com/xlt/shop_srv/user_srv/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
+
+	"github.com/xlt/shop_srv/user_srv/global"
+	"github.com/xlt/shop_srv/user_srv/model"
+	"github.com/xlt/shop_srv/user_srv/proto"
 )
 
 type UserServer struct {

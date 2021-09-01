@@ -1,0 +1,8 @@
+mode: 'release'
+
+mysql:
+  host: '192.168.199.243'
+  port: '3306'
+  db_name: 'xltshop_user_srv'
+  user: 'root'
+  password: 'root'
