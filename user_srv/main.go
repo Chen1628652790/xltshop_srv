@@ -15,16 +15,21 @@ import (
 	"github.com/xlt/shop_srv/user_srv/handler"
 	"github.com/xlt/shop_srv/user_srv/initialize"
 	"github.com/xlt/shop_srv/user_srv/proto"
+	"github.com/xlt/shop_srv/user_srv/utils"
 )
 
 func main() {
 	IP := flag.String("ip", "0.0.0.0", "ip地址")
-	Port := flag.Int64("port", 50051, "端口号")
+	Port := flag.Int64("port", 0, "端口号")
 	flag.Parse()
 
 	initialize.InitLogger()
 	initialize.InitConfig()
 	initialize.InitMySQL()
+
+	if *Port == 0 {
+		*Port = int64(utils.GetFreePort())
+	}
 
 	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *IP, *Port))
 	if err != nil {
@@ -45,7 +50,7 @@ func main() {
 	}
 	// 注册user_srv的grpc检查
 	check := &api.AgentServiceCheck{
-		GRPC:                           "192.168.199.194:50051",
+		GRPC:                           fmt.Sprintf("192.168.199.194:%d", *Port),
 		Timeout:                        "5s",
 		Interval:                       "5s",
 		DeregisterCriticalServiceAfter: "10s",
@@ -55,7 +60,7 @@ func main() {
 	registration := new(api.AgentServiceRegistration)
 	registration.Name = global.ServerConfig.ServerName
 	registration.ID = global.ServerConfig.ServerName
-	registration.Port = 50051
+	registration.Port = int(*Port)
 	registration.Tags = []string{"xlt", "user", "srv"}
 	registration.Address = "192.168.199.194"
 	registration.Check = check
@@ -65,6 +70,7 @@ func main() {
 		panic(err)
 	}
 
+	zap.S().Infow("server.Serve success", "port", *Port)
 	err = server.Serve(listen)
 	if err != nil {
 		zap.S().Errorw("server.Serve failed, err:", "msg", err.Error())
