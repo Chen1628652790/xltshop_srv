@@ -4,8 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/hashicorp/consul/api"
+	"github.com/satori/go.uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -56,10 +60,13 @@ func main() {
 		DeregisterCriticalServiceAfter: "10s",
 	}
 
+	// uuid 保证服务唯一
+	serviceID := fmt.Sprintf("%s", uuid.NewV4())
+
 	// 配置注册信息方便 web 层调用
 	registration := new(api.AgentServiceRegistration)
 	registration.Name = global.ServerConfig.ServerName
-	registration.ID = global.ServerConfig.ServerName
+	registration.ID = serviceID
 	registration.Port = int(*Port)
 	registration.Tags = []string{"xlt", "user", "srv"}
 	registration.Address = "192.168.199.194"
@@ -70,9 +77,21 @@ func main() {
 		panic(err)
 	}
 
-	zap.S().Infow("server.Serve success", "port", *Port)
-	err = server.Serve(listen)
-	if err != nil {
-		zap.S().Errorw("server.Serve failed, err:", "msg", err.Error())
+	zap.S().Infow("server.Serve success", "port", *Port, "serviveID", serviceID)
+	go func() {
+		err = server.Serve(listen)
+		if err != nil {
+			zap.S().Errorw("server.Serve failed, err:", "msg", err.Error())
+		}
+	}()
+
+	// signal
+	quit := make(chan os.Signal)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	if err := consulClient.Agent().ServiceDeregister(serviceID); err != nil {
+		zap.S().Errorw("consulClient.Agent().ServiceDeregister failed", "msg", err.Error())
+		return
 	}
+	zap.S().Infow("注销服务成功", "port", *Port, "serviveID", serviceID)
 }
