@@ -78,7 +78,7 @@ func getWriter(filename string) io.Writer {
 	// 保存7天内的日志，每24小时(每天)分割一次日志
 	hook, err := rotatelogs.New(
 		output_dir+"%Y%m%d"+"-"+filename,
-		rotatelogs.WithLinkName(filename),
+		//rotatelogs.WithLinkName(filename),
 		rotatelogs.WithMaxAge(time.Hour*24*7),
 		rotatelogs.WithRotationTime(time.Hour*24),
 	)
