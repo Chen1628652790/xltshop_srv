@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
-	"github.com/xlt/shop_srv/user_srv/global"
+	"github.com/xlt/shop_srv/goods_srv/global"
 )
 
 func InitConfig() {

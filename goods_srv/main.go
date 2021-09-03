@@ -15,15 +15,15 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/xlt/shop_srv/user_srv/global"
-	"github.com/xlt/shop_srv/user_srv/handler"
-	"github.com/xlt/shop_srv/user_srv/initialize"
-	"github.com/xlt/shop_srv/user_srv/proto"
-	"github.com/xlt/shop_srv/user_srv/utils"
+	"github.com/xlt/shop_srv/goods_srv/global"
+	"github.com/xlt/shop_srv/goods_srv/handler"
+	"github.com/xlt/shop_srv/goods_srv/initialize"
+	"github.com/xlt/shop_srv/goods_srv/proto"
+	"github.com/xlt/shop_srv/goods_srv/utils"
 )
 
 func main() {
-	IP := flag.String("ip", "0.0.0.0", "ip地址")
+	//IP := flag.String("ip", "0.0.0.0", "ip地址")
 	Port := flag.Int64("port", 0, "端口号")
 	flag.Parse()
 
@@ -35,14 +35,14 @@ func main() {
 		*Port = int64(utils.GetFreePort())
 	}
 
-	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *IP, *Port))
+	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", global.ServerConfig.Host, *Port))
 	if err != nil {
 		zap.S().Errorw("net.Listen failed, err:", "msg", err.Error())
 		return
 	}
 
 	server := grpc.NewServer()
-	proto.RegisterUserServer(server, &handler.UserServer{})
+	proto.RegisterGoodsServer(server, &handler.GoodsServer{})
 	grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 
 	// 创建Consul客户端
@@ -52,9 +52,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// 注册user_srv的grpc检查
+	// 注册goods_srv的grpc检查
 	check := &api.AgentServiceCheck{
-		GRPC:                           fmt.Sprintf("192.168.199.194:%d", *Port),
+		GRPC:                           fmt.Sprintf("%s:%d", global.ServerConfig.Host, *Port),
 		Timeout:                        "5s",
 		Interval:                       "5s",
 		DeregisterCriticalServiceAfter: "10s",
@@ -68,8 +68,8 @@ func main() {
 	registration.Name = global.ServerConfig.ServerName
 	registration.ID = serviceID
 	registration.Port = int(*Port)
-	registration.Tags = []string{"xlt", "user", "srv"}
-	registration.Address = "192.168.199.194"
+	registration.Tags = global.ServerConfig.Tags
+	registration.Address = global.ServerConfig.Host
 	registration.Check = check
 	err = consulClient.Agent().ServiceRegister(registration)
 	if err != nil {

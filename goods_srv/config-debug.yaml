@@ -1,7 +1,7 @@
 host: '192.168.199.243'
 port: 8848
-namespace: 'a05ba893-1ca4-4ffc-a8fc-b0bd676e5b38'
+namespace: '8ab4476b-a585-4aae-85aa-056d264bd826'
 user: 'nacos'
 password: 'nacos'
-dataid: 'user_srv.json'
+data_id: 'goods_srv.json'
 group: 'debug'
