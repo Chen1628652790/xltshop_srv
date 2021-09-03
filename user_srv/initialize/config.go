@@ -1,7 +1,11 @@
 package initialize
 
 import (
-	"github.com/fsnotify/fsnotify"
+	"encoding/json"
+
+	"github.com/nacos-group/nacos-sdk-go/clients"
+	"github.com/nacos-group/nacos-sdk-go/common/constant"
+	"github.com/nacos-group/nacos-sdk-go/vo"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
@@ -9,39 +13,71 @@ import (
 )
 
 func InitConfig() {
-	var configFileName string
-
-	if global.ServerConfig.Mode == "debug" {
-		configFileName = "config-debug.yaml"
-	} else {
-		configFileName = "config-pro.yaml"
-	}
-
 	v := viper.New()
-	v.SetConfigFile(configFileName)
+	v.SetConfigFile("config-release.yaml")
 	if err := v.ReadInConfig(); err != nil {
 		zap.S().Errorw("v.ReadInConfig failed", "msg", err.Error())
 		return
 	}
 
-	if err := v.Unmarshal(global.ServerConfig); err != nil {
+	if err := v.Unmarshal(global.NacosConfig); err != nil {
 		zap.S().Errorw("v.Unmarshal failed", "msg", err.Error())
 		return
 	}
-	zap.S().Infow("配置文件读取成功", "data", global.ServerConfig)
+	zap.S().Infow("配置文件读取成功", "data", global.NacosConfig)
 
-	v.WatchConfig()
-	v.OnConfigChange(func(e fsnotify.Event) {
-		zap.S().Infow("配置文件发生变化", "filename", e.Name)
-		if err := v.ReadInConfig(); err != nil {
-			zap.S().Errorw("v.ReadInConfig failed", "msg", err.Error())
-			return
-		}
+	sc := []constant.ServerConfig{
+		{
+			IpAddr: global.NacosConfig.Host,
+			Port:   uint64(global.NacosConfig.Port),
+		},
+	}
 
-		if err := v.Unmarshal(global.ServerConfig); err != nil {
-			zap.S().Errorw("v.Unmarshal failed", "msg", err.Error())
-			return
-		}
-		zap.S().Infow("配置文件重新读取成功", "data", global.ServerConfig)
+	cc := constant.ClientConfig{
+		NamespaceId:         global.NacosConfig.Namespace,
+		TimeoutMs:           5000,
+		NotLoadCacheAtStart: true,
+		LogDir:              "tmp/nacos/log",
+		CacheDir:            "tmp/nacos/cache",
+		RotateTime:          "1h",
+		MaxAge:              3,
+		LogLevel:            "debug",
+	}
+
+	nacosClient, err := clients.CreateConfigClient(map[string]interface{}{
+		"serverConfigs": sc,
+		"clientConfig":  cc,
+	})
+	if err != nil {
+		zap.S().Errorw("clients.CreateConfigClient failed", "msg", err.Error())
+		return
+	}
+
+	content, err := nacosClient.GetConfig(vo.ConfigParam{
+		DataId: "user_srv.json",
+		Group:  global.NacosConfig.Group,
+	})
+	if err != nil {
+		zap.S().Errorw("nacosClient.GetConfig failed", "msg", err.Error())
+		return
+	}
+
+	if err = json.Unmarshal([]byte(content), &global.ServerConfig); err != nil {
+		zap.S().Errorw("json.Unmarshal failed", "msg", err.Error())
+		return
+	}
+	zap.S().Infow("读取Nacos配置成功", "data", global.ServerConfig)
+
+	err = nacosClient.ListenConfig(vo.ConfigParam{
+		DataId: "user_srv.json",
+		Group:  global.NacosConfig.Group,
+		OnChange: func(namespace, group, dataId, data string) {
+			zap.S().Infow("配置文件发生变化，即将重新读取配置")
+			if err = json.Unmarshal([]byte(content), &global.ServerConfig); err != nil {
+				zap.S().Errorw("json.Unmarshal failed", "msg", err.Error())
+				return
+			}
+			zap.S().Infow("读取Nacos配置成功", "data", global.ServerConfig)
+		},
 	})
 }
