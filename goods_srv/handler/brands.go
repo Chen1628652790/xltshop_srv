@@ -43,6 +43,7 @@ func (handler *GoodsServer) BrandList(ctx context.Context, req *proto.BrandFilte
 
 func (handler *GoodsServer) CreateBrand(ctx context.Context, req *proto.BrandRequest) (*proto.BrandInfoResponse, error) {
 	if result := global.MySQLConn.First(&model.Brands{}); result.RowsAffected != 0 {
+		zap.S().Errorw("global.MySQLConn.First failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.InvalidArgument, "品牌已存在")
 	}
 
@@ -59,6 +60,7 @@ func (handler *GoodsServer) CreateBrand(ctx context.Context, req *proto.BrandReq
 
 func (handler *GoodsServer) DeleteBrand(ctx context.Context, req *proto.BrandRequest) (*empty.Empty, error) {
 	if result := global.MySQLConn.Delete(&model.Brands{}, req.Id); result.RowsAffected == 0 {
+		zap.S().Errorw("global.MySQLConn.Delete failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.InvalidArgument, "品牌不存在")
 	}
 	return &empty.Empty{}, nil
@@ -66,6 +68,7 @@ func (handler *GoodsServer) DeleteBrand(ctx context.Context, req *proto.BrandReq
 
 func (handler *GoodsServer) UpdateBrand(ctx context.Context, req *proto.BrandRequest) (*empty.Empty, error) {
 	if result := global.MySQLConn.First(&model.Brands{}, req.Id); result.RowsAffected == 0 {
+		zap.S().Errorw("global.MySQLConn.First failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.InvalidArgument, "品牌不存在")
 	}
 
@@ -78,6 +81,7 @@ func (handler *GoodsServer) UpdateBrand(ctx context.Context, req *proto.BrandReq
 	}
 
 	if result := global.MySQLConn.Save(&brand); result.Error != nil {
+		zap.S().Errorw("global.MySQLConn.Save failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.Internal, "更新品牌失败")
 	}
 	return &empty.Empty{}, nil
