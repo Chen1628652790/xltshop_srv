@@ -9,11 +9,11 @@ import (
 )
 
 type BaseModel struct {
-	ID        int32     `gorm:"primarykey"`
-	CreatedAt time.Time `gorm:"column:add_time"`
-	UpdatedAt time.Time `gorm:"column:update_time"`
-	DeletedAt gorm.DeletedAt
-	IsDeleted bool
+	ID        int32          `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `gorm:"column:add_time" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"column:update_time" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at"`
+	IsDeleted bool           `json:"is_deleted"`
 }
 
 type GormList []string
