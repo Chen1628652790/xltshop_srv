@@ -47,7 +47,7 @@ func main() {
 
 	// 创建Consul客户端
 	cfg := api.DefaultConfig()
-	cfg.Address = "192.168.199.243:8500"
+	cfg.Address = fmt.Sprintf("%s:%d", global.ServerConfig.ConsulConfig.Host, global.ServerConfig.ConsulConfig.Port)
 	consulClient, err := api.NewClient(cfg)
 	if err != nil {
 		panic(err)

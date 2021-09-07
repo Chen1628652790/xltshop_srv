@@ -61,14 +61,16 @@ func (handler *GoodsServer) GoodsList(ctx context.Context, req *proto.GoodsFilte
 	var goods []model.Goods
 	var rowCount int
 	var tmpCount int64
+	var totalCount int
 
 	mysqlDB.Count(&tmpCount)
-	rowCount = int(tmpCount)
+	totalCount = int(tmpCount)
 	result := mysqlDB.Preload("Category").Preload("Brands").Scopes(Paginate(int(req.Pages), int(req.PagePerNums))).Find(&goods)
 	if result.Error != nil {
 		zap.S().Errorw("global.MySQLConn.First failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.Internal, "查询商品失败")
 	}
+	rowCount = int(result.RowsAffected)
 
 	goodsInfoResponses := make([]*proto.GoodsInfoResponse, rowCount)
 	for i := 0; i < rowCount; i++ {
@@ -77,7 +79,7 @@ func (handler *GoodsServer) GoodsList(ctx context.Context, req *proto.GoodsFilte
 	}
 
 	return &proto.GoodsListResponse{
-		Total: int32(rowCount),
+		Total: int32(totalCount),
 		Data:  goodsInfoResponses,
 	}, nil
 }
@@ -174,22 +176,20 @@ func (handler *GoodsServer) UpdateGoods(ctx context.Context, req *proto.CreateGo
 		return nil, status.Errorf(codes.NotFound, "品牌不存在")
 	}
 
-	goods = model.Goods{
-		CategoryID:      req.CategoryId,
-		BrandsID:        req.BrandId,
-		OnSale:          req.OnSale,
-		ShipFree:        req.ShipFree,
-		IsNew:           req.IsNew,
-		IsHot:           req.IsHot,
-		Name:            req.Name,
-		GoodsSn:         req.GoodsSn,
-		MarketPrice:     req.MarketPrice,
-		ShopPrice:       req.ShopPrice,
-		GoodsBrief:      req.GoodsBrief,
-		Images:          req.Images,
-		DescImages:      req.DescImages,
-		GoodsFrontImage: req.GoodsFrontImage,
-	}
+	goods.BrandsID = req.BrandId
+	goods.CategoryID = req.CategoryId
+	goods.Name = req.Name
+	goods.GoodsSn = req.GoodsSn
+	goods.MarketPrice = req.MarketPrice
+	goods.ShopPrice = req.ShopPrice
+	goods.GoodsBrief = req.GoodsBrief
+	goods.ShipFree = req.ShipFree
+	goods.Images = req.Images
+	goods.DescImages = req.DescImages
+	goods.GoodsFrontImage = req.GoodsFrontImage
+	goods.IsNew = req.IsNew
+	goods.IsHot = req.IsHot
+	goods.OnSale = req.OnSale
 	if result := global.MySQLConn.Save(&goods); result.Error != nil {
 		zap.S().Errorw("global.MySQLConn.Create failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.Internal, "更新商品失败")
