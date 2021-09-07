@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/xlt/shop_srv/inventory_srv/handler"
 	"net"
 	"os"
 	"os/signal"
@@ -41,7 +42,7 @@ func main() {
 	}
 
 	server := grpc.NewServer()
-	proto.RegisterInventoryServer(server, &proto.UnimplementedInventoryServer{})
+	proto.RegisterInventoryServer(server, &handler.InventoryServer{})
 	grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 
 	// 创建Consul客户端
