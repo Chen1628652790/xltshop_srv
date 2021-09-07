@@ -2,12 +2,12 @@ package handler
 
 import (
 	"context"
-	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"gorm.io/gorm/clause"
 
 	"github.com/xlt/shop_srv/inventory_srv/global"
 	"github.com/xlt/shop_srv/inventory_srv/model"
@@ -44,22 +44,20 @@ func (hadnler *InventoryServer) InvDetail(ctx context.Context, req *proto.GoodsI
 	}, nil
 }
 
-// 全局互斥锁，最好嵌入到InventoryServer内部
-// 但是在分布式系统中，互斥锁就不适用了
-var wg sync.Mutex
-
 func (hadnler *InventoryServer) Sell(ctx context.Context, req *proto.SellInfo) (*empty.Empty, error) {
 	// todo 这里有事务问题，第一件商品扣减成功，但是第二件商品因为库存没有扣减
-
-	// 同时只有一个协程能抢到锁
-	wg.Lock()
 
 	tx := global.MySQLConn.Begin()
 
 	for _, goods := range req.GoodsInfo {
 		var goodsInventory model.Inventory
 
-		if result := global.MySQLConn.Where(&model.Inventory{Goods: goods.GoodsId}).First(&goodsInventory); result.RowsAffected == 0 {
+		// select * from inventory for update --- 悲观锁
+		// 使用前提：需要开启事务，这样就不会自动提交，可以在事务中进行操作然后手动提交
+		// 1. 悲观锁由来：因为每次操作都觉得需要的数据可能会被其它线程操作（老是觉得有问题比较悲观），需要自己先抢到锁才可以进行操作
+		// 2. 悲观锁的使用：在查询语句时候悲观锁，其它线程进来抢不到锁会阻塞，事务提交之后其它线程才能操作，保证数据一致性
+		// 3. 悲观锁粒度升级：悲观锁在使用索引查询的时候是行锁，锁定一行记录。如果没有使用索引查询的话会导致锁表，行锁升级为表锁。
+		if result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where(&model.Inventory{Goods: goods.GoodsId}).First(&goodsInventory); result.RowsAffected == 0 {
 			tx.Rollback()
 			zap.S().Errorw("global.MySQLConn.First failed", "msg", result.Error.Error())
 			return nil, status.Errorf(codes.NotFound, "没有库存信息")
@@ -78,9 +76,6 @@ func (hadnler *InventoryServer) Sell(ctx context.Context, req *proto.SellInfo) (
 		}
 	}
 	tx.Commit()
-
-	// 事务提交之后释放锁
-	wg.Unlock()
 
 	return &empty.Empty{}, nil
 }
