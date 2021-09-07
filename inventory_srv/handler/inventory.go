@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
@@ -43,8 +44,14 @@ func (hadnler *InventoryServer) InvDetail(ctx context.Context, req *proto.GoodsI
 	}, nil
 }
 
+// 全局互斥锁，最好嵌入到InventoryServer内部
+var wg sync.Mutex
+
 func (hadnler *InventoryServer) Sell(ctx context.Context, req *proto.SellInfo) (*empty.Empty, error) {
 	// todo 这里有事务问题，第一件商品扣减成功，但是第二件商品因为库存没有扣减
+
+	// 同时只有一个协程能抢到锁
+	wg.Lock()
 
 	tx := global.MySQLConn.Begin()
 
@@ -70,6 +77,10 @@ func (hadnler *InventoryServer) Sell(ctx context.Context, req *proto.SellInfo) (
 		}
 	}
 	tx.Commit()
+
+	// 事务提交之后释放锁
+	wg.Unlock()
+
 	return &empty.Empty{}, nil
 }
 
