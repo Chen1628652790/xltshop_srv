@@ -45,6 +45,7 @@ func (hadnler *InventoryServer) InvDetail(ctx context.Context, req *proto.GoodsI
 }
 
 // 全局互斥锁，最好嵌入到InventoryServer内部
+// 但是在分布式系统中，互斥锁就不适用了
 var wg sync.Mutex
 
 func (hadnler *InventoryServer) Sell(ctx context.Context, req *proto.SellInfo) (*empty.Empty, error) {
