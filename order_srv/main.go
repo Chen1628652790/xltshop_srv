@@ -15,11 +15,10 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/xlt/shop_srv/inventory_srv/global"
-	"github.com/xlt/shop_srv/inventory_srv/handler"
-	"github.com/xlt/shop_srv/inventory_srv/initialize"
-	"github.com/xlt/shop_srv/inventory_srv/proto"
-	"github.com/xlt/shop_srv/inventory_srv/utils"
+	"github.com/xlt/shop_srv/order_srv/global"
+	"github.com/xlt/shop_srv/order_srv/initialize"
+	"github.com/xlt/shop_srv/order_srv/proto"
+	"github.com/xlt/shop_srv/order_srv/utils"
 )
 
 func main() {
@@ -42,7 +41,7 @@ func main() {
 	}
 
 	server := grpc.NewServer()
-	proto.RegisterInventoryServer(server, &handler.InventoryServer{})
+	proto.RegisterOrderServer(server, &proto.UnimplementedOrderServer{})
 	grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 
 	// 创建Consul客户端
@@ -52,7 +51,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// 注册inventory_srv的grpc检查
+	// 注册order_srv的grpc检查
 	check := &api.AgentServiceCheck{
 		GRPC:                           fmt.Sprintf("%s:%d", global.ServerConfig.Host, *Port),
 		Timeout:                        "5s",
