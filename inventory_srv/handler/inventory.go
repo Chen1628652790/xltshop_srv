@@ -63,7 +63,7 @@ func (hadnler *InventoryServer) Sell(ctx context.Context, req *proto.SellInfo) (
 			}
 			inventory.Stocks -= goodInfo.Num
 
-			// 乐观锁：失败之后主动重新查询数据库更新库存，比较积极主动所以叫乐观锁
+			// 乐观锁：失败之后主动重新查询数据库再次更新库存，比较积极主动所以叫乐观锁，相比较于悲观锁在查询的时候把记录锁住更积极尝试，而不是坐吃等锁
 			// 1. 更新的时候需要两个字段，商品ID、和版本号，更新之后版本号加1
 			// 2. 因为更新方法是原子性的，所以不会导致并发问题
 			// 3. 需要注意的是注意零值的更新，查询的时候不能使用tx查询，需要用global.MySQLConn
