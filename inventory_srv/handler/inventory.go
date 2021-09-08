@@ -7,7 +7,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"gorm.io/gorm/clause"
 
 	"github.com/xlt/shop_srv/inventory_srv/global"
 	"github.com/xlt/shop_srv/inventory_srv/model"
@@ -49,32 +48,33 @@ func (hadnler *InventoryServer) Sell(ctx context.Context, req *proto.SellInfo) (
 
 	tx := global.MySQLConn.Begin()
 
-	for _, goods := range req.GoodsInfo {
-		var goodsInventory model.Inventory
+	for _, goodInfo := range req.GoodsInfo {
+		var inventory model.Inventory
+		for true {
+			if result := global.MySQLConn.Where(&model.Inventory{Goods: goodInfo.GoodsId}).First(&inventory); result.RowsAffected == 0 {
+				tx.Rollback()
+				zap.S().Errorw("global.MySQLConn.First failed", "msg", result.Error.Error())
+				return nil, status.Errorf(codes.NotFound, "没有库存信息")
+			}
+			if inventory.Stocks < goodInfo.Num {
+				tx.Rollback()
+				zap.S().Errorw("goodsInventory.Stocks < goods.Num failed")
+				return nil, status.Errorf(codes.ResourceExhausted, "库存不足")
+			}
+			inventory.Stocks -= goodInfo.Num
 
-		// select * from inventory for update --- 悲观锁
-		// 使用前提：需要开启事务，这样就不会自动提交，可以在事务中进行操作然后手动提交
-		// 1. 悲观锁由来：因为每次操作都觉得需要的数据可能会被其它线程操作（老是觉得有问题比较悲观），需要自己先抢到锁才可以进行操作
-		// 2. 悲观锁的使用：在查询语句时候悲观锁，其它线程进来抢不到锁会阻塞，事务提交之后其它线程才能操作，保证数据一致性
-		// 3. 悲观锁粒度升级：悲观锁在使用索引查询的时候是行锁，锁定一行记录。如果没有使用索引查询的话会导致锁表，行锁升级为表锁。
-		if result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where(&model.Inventory{Goods: goods.GoodsId}).First(&goodsInventory); result.RowsAffected == 0 {
-			tx.Rollback()
-			zap.S().Errorw("global.MySQLConn.First failed", "msg", result.Error.Error())
-			return nil, status.Errorf(codes.NotFound, "没有库存信息")
-		}
-		if goodsInventory.Stocks < goods.Num {
-			tx.Rollback()
-			zap.S().Errorw("goodsInventory.Stocks < goods.Num failed")
-			return nil, status.Errorf(codes.ResourceExhausted, "库存不足")
-		}
-
-		goodsInventory.Stocks -= goods.Num
-		if result := tx.Save(&goodsInventory); result.Error != nil {
-			tx.Rollback()
-			zap.S().Errorw("global.MySQLConn.Save failed", "msg", result.Error.Error())
-			return nil, status.Errorf(codes.ResourceExhausted, "扣减库存失败")
+			// 乐观锁：失败之后主动重新查询数据库更新库存，比较积极主动所以叫乐观锁
+			// 1. 更新的时候需要两个字段，商品ID、和版本号，更新之后版本号加1
+			// 2. 因为更新方法是原子性的，所以不会导致并发问题
+			// 3. 需要注意的是注意零值的更新，查询的时候不能使用tx查询，需要用global.MySQLConn
+			if result := tx.Model(&model.Inventory{}).Select("Stocks", "Version").Where("goods = ? and version= ?", goodInfo.GoodsId, inventory.Version).Updates(model.Inventory{Stocks: inventory.Stocks, Version: inventory.Version + 1}); result.RowsAffected == 0 {
+				zap.S().Info("库存扣减失败")
+			} else {
+				break
+			}
 		}
 	}
+
 	tx.Commit()
 
 	return &empty.Empty{}, nil
