@@ -44,7 +44,7 @@ type OrderGoods struct {
 	Goods int32 `gorm:"type:int;index"`
 
 	//把商品的信息保存下来了 ， 字段冗余， 高并发系统中我们一般都不会遵循三范式  做镜像 记录
-	GoodsName  string `gorm:"type:varchar(100);index"`
+	GoodsName  string `gorm:"type:varchar(256);index"`
 	GoodsImage string `gorm:"type:varchar(200)"`
 	GoodsPrice float32
 	Nums       int32 `gorm:"type:int"`

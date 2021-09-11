@@ -23,7 +23,7 @@ import (
 )
 
 func main() {
-	IP := flag.String("ip", "0.0.0.0", "ip地址")
+	//IP := flag.String("ip", "0.0.0.0", "ip地址")
 	Port := flag.Int64("port", 0, "端口号")
 	flag.Parse()
 
@@ -35,7 +35,7 @@ func main() {
 		*Port = int64(utils.GetFreePort())
 	}
 
-	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *IP, *Port))
+	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", global.ServerConfig.Host, *Port))
 	if err != nil {
 		zap.S().Errorw("net.Listen failed, err:", "msg", err.Error())
 		return
@@ -47,14 +47,14 @@ func main() {
 
 	// 创建Consul客户端
 	cfg := api.DefaultConfig()
-	cfg.Address = "192.168.0.105:8500"
+	cfg.Address = fmt.Sprintf("%s:%d", global.ServerConfig.ConsulConfig.Host, global.ServerConfig.ConsulConfig.Port)
 	consulClient, err := api.NewClient(cfg)
 	if err != nil {
 		panic(err)
 	}
 	// 注册user_srv的grpc检查
 	check := &api.AgentServiceCheck{
-		GRPC:                           fmt.Sprintf("192.168.199.194:%d", *Port),
+		GRPC:                           fmt.Sprintf("%s:%d", global.ServerConfig.Host, *Port),
 		Timeout:                        "5s",
 		Interval:                       "5s",
 		DeregisterCriticalServiceAfter: "10s",
@@ -68,8 +68,8 @@ func main() {
 	registration.Name = global.ServerConfig.ServerName
 	registration.ID = serviceID
 	registration.Port = int(*Port)
-	registration.Tags = []string{"xlt", "user", "srv"}
-	registration.Address = "192.168.199.194"
+	registration.Tags = global.ServerConfig.Tags
+	registration.Address = global.ServerConfig.Host
 	registration.Check = check
 	err = consulClient.Agent().ServiceRegister(registration)
 	if err != nil {

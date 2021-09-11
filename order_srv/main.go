@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/xlt/shop_srv/order_srv/global"
+	"github.com/xlt/shop_srv/order_srv/handler"
 	"github.com/xlt/shop_srv/order_srv/initialize"
 	"github.com/xlt/shop_srv/order_srv/proto"
 	"github.com/xlt/shop_srv/order_srv/utils"
@@ -42,7 +43,7 @@ func main() {
 	}
 
 	server := grpc.NewServer()
-	proto.RegisterOrderServer(server, &proto.UnimplementedOrderServer{})
+	proto.RegisterOrderServer(server, &handler.OrderServer{})
 	grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 
 	// 创建Consul客户端

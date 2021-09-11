@@ -34,7 +34,6 @@ func (hadnler *InventoryServer) InvDetail(ctx context.Context, req *proto.GoodsI
 	var inventory model.Inventory
 
 	if result := global.MySQLConn.Where(&model.Inventory{Goods: req.GoodsId}).First(&inventory); result.RowsAffected == 0 {
-		zap.S().Errorw("global.MySQLConn.Save failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.NotFound, "没有库存信息")
 	}
 	return &proto.GoodsInvInfo{

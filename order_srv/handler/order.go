@@ -10,7 +10,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"gorm.io/gorm"
 
 	"github.com/xlt/shop_srv/order_srv/global"
@@ -68,7 +67,7 @@ func (*OrderServer) CreateCartItem(ctx context.Context, req *proto.CartItemReque
 	return &proto.ShopCartInfoResponse{Id: shopCart.ID}, nil
 }
 
-func (*OrderServer) UpdateCartItem(ctx context.Context, req *proto.CartItemRequest) (*emptypb.Empty, error) {
+func (*OrderServer) UpdateCartItem(ctx context.Context, req *proto.CartItemRequest) (*empty.Empty, error) {
 	//更新购物车记录，更新数量和选中状态
 	var shopCart model.ShoppingCart
 
@@ -86,15 +85,15 @@ func (*OrderServer) UpdateCartItem(ctx context.Context, req *proto.CartItemReque
 		return nil, result.Error
 	}
 
-	return &emptypb.Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
-func (*OrderServer) DeleteCartItem(ctx context.Context, req *proto.CartItemRequest) (*emptypb.Empty, error) {
+func (*OrderServer) DeleteCartItem(ctx context.Context, req *proto.CartItemRequest) (*empty.Empty, error) {
 	if result := global.MySQLConn.Where("goods=? and user=?", req.GoodsId, req.UserId).Delete(&model.ShoppingCart{}); result.RowsAffected == 0 {
 		zap.S().Errorw("global.MySQLConn.Where failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.NotFound, "购物车记录不存在")
 	}
-	return &emptypb.Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
 func (*OrderServer) OrderList(ctx context.Context, req *proto.OrderFilterRequest) (*proto.OrderListResponse, error) {
@@ -102,7 +101,7 @@ func (*OrderServer) OrderList(ctx context.Context, req *proto.OrderFilterRequest
 	var rsp proto.OrderListResponse
 
 	var total int64
-	if result := global.MySQLConn.Where(&model.OrderInfo{User: req.UserId}).Count(&total); result.Error != nil {
+	if result := global.MySQLConn.Model(&model.OrderInfo{}).Where(&model.OrderInfo{User: req.UserId}).Count(&total); result.Error != nil {
 		zap.S().Errorw("global.MySQLConn.Where failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.NotFound, "查询订单列表总数失败")
 	}
@@ -246,15 +245,14 @@ func (*OrderServer) CreateOrder(ctx context.Context, req *proto.OrderRequest) (*
 	for _, goods := range orderGoods {
 		goods.Order = order.ID
 	}
-	if result := global.MySQLConn.CreateInBatches(&orderGoods, 100); result.Error != nil {
+	if result := global.MySQLConn.CreateInBatches(&orderGoods, 20); result.Error != nil {
 		tx.Rollback()
 		zap.S().Errorw("global.MySQLConn.CreateInBatches failed", "msg", err.Error())
 		return nil, status.Errorf(codes.Internal, "创建订单商品失败")
 	}
 
-	if result := tx.Where(&model.ShoppingCart{User: req.UserId, Checked: true}).Delete(&model.ShoppingCart{}); result.RowsAffected == 0 {
+	if result := tx.Where("user = ? and checked = ?", req.UserId, 1).Delete(&model.ShoppingCart{}); result.Error != nil {
 		tx.Rollback()
-		zap.S().Errorw("tx.Where(&model.ShoppingCart{User: req.UserId, Checked: true}) failed", "msg", err.Error())
 		return nil, status.Errorf(codes.Internal, "删除购物车商品失败")
 	}
 

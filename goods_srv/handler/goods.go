@@ -88,11 +88,12 @@ func (handler *GoodsServer) BatchGetGoods(ctx context.Context, req *proto.BatchG
 	var goods []model.Goods
 	var rowCount int
 
-	if result := global.MySQLConn.Find(&goods, req.Id); result.Error != nil {
+	result := global.MySQLConn.Find(&goods, req.Id)
+	if result.Error != nil {
 		zap.S().Errorw("global.MySQLConn.Find failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.Internal, "查询商品失败")
 	}
-
+	rowCount = int(result.RowsAffected)
 	goodsInfoResponses := make([]*proto.GoodsInfoResponse, rowCount)
 	for i := 0; i < rowCount; i++ {
 		goodsInfoResponse := ModelToResponse(goods[i])
@@ -106,10 +107,10 @@ func (handler *GoodsServer) BatchGetGoods(ctx context.Context, req *proto.BatchG
 }
 
 func (handler *GoodsServer) GetGoodsDetail(ctx context.Context, req *proto.GoodInfoRequest) (*proto.GoodsInfoResponse, error) {
-	var goods model.Goods
+	goods := model.Goods{}
 
 	if result := global.MySQLConn.Find(&goods, req.Id); result.RowsAffected == 0 {
-		zap.S().Errorw("global.MySQLConn.Find failed", "msg", result.Error.Error())
+		//zap.S().Errorw("global.MySQLConn.Find failed", "msg", result.Error.Error())
 		return nil, status.Errorf(codes.NotFound, "商品不存在")
 	}
 	goodsInfoRsp := ModelToResponse(goods)
