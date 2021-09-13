@@ -30,6 +30,7 @@ func main() {
 	initialize.InitLogger()
 	initialize.InitConfig()
 	initialize.InitMySQL()
+	initialize.InitEs()
 
 	if *Port == 0 {
 		*Port = int64(utils.GetFreePort())

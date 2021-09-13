@@ -12,6 +12,7 @@ require (
 	github.com/lestrrat-go/strftime v1.0.5 // indirect
 	github.com/mbobakov/grpc-consul-resolver v1.4.4
 	github.com/nacos-group/nacos-sdk-go v1.0.8
+	github.com/olivere/elastic/v7 v7.0.28
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/viper v1.8.1
 	go.uber.org/zap v1.19.0
