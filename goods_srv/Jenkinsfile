@@ -1,0 +1,34 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('pull code') {
+            steps {
+                sh 'echo "从Git拉取代码"'
+                git credentialsId: 'gitee-user-password', url: 'https://gitee.com/the-second-cup-is-half-price/xltshop_api.git'
+            }
+        }
+        stage('go config') {
+            steps {
+                sh 'echo "查看Go语言版本信息"'
+                sh '/usr/local/go/bin/go version'
+                sh 'echo "开启 go module"'
+                sh '/usr/local/go/bin/go env -w GO111MODULE=on'
+                sh '/usr/local/go/bin/go env -w GOPROXY=https://goproxy.io'
+            }
+        }
+        stage('go build') {
+            steps {
+                sh 'echo "开始构建"'
+                sh '/usr/local/go/bin/go build -o goods_web/goods_web_main goods_web/main.go'
+                sh 'cd goods_web && rm -rf target/ && mkdir target && cp config-release.yaml target/ && cp goods_web_main target/ && cp start.sh target/'
+            }
+        }
+        stage('deploy project') {
+            steps {
+                sh 'echo "deploy project"'
+                sshPublisher(publishers: [sshPublisherDesc(configName: '192.168.244.130-root', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'chmod +x /docker/goods_web/start.sh && cd /docker/goods_web/ && ./start.sh', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: 'docker/goods_web/', remoteDirectorySDF: false, removePrefix: 'goods_web/target/', sourceFiles: 'goods_web/target/**')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+        }
+    }
+}
